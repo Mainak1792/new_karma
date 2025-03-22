@@ -98,12 +98,17 @@ export const logOutAction = async () => {
 export const signUpAction = async (email: string, password: string): Promise<{ errorMessage: string | null }> => {
   try {
     const { auth } = await createClient();
+    
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                   process.env.VERCEL_URL ? 
+                   `https://${process.env.VERCEL_URL}` : 
+                   'http://localhost:3000';
 
     const { data, error } = await auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
       },
     });
     if (error) throw error;

@@ -5,16 +5,7 @@ import { prisma } from "@/db/prisma";
 import { handleError } from "@/lib/utils";
 import openai from "@/openai";
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
-import type { PrismaClient } from "@prisma/client";
-
-// Define Note type locally to avoid import issues
-type Note = {
-  id: string;
-  text: string;
-  authorId: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
+import { Note } from "@prisma/client";
 
 export async function getNotesAction(userId: string) {
   try {
