@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { createNoteAction } from "@/actions/notes";
 
 type Props = {
@@ -23,11 +22,20 @@ function NewNoteButton({ user }: Props) {
     } else {
       setLoading(true);
 
-      const uuid = uuidv4();
-      await createNoteAction(uuid);
-      router.push(`/?noteId=${uuid}&toastType=newNote`);
-
-      setLoading(false);
+      try {
+        const { note, errorMessage } = await createNoteAction(user.id);
+        
+        if (note) {
+          router.push(`/?noteId=${note.id}&toastType=newNote`);
+        } else if (errorMessage) {
+          console.error("Failed to create note:", errorMessage);
+          // Could add toast notification here
+        }
+      } catch (error) {
+        console.error("Error creating note:", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
