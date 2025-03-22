@@ -2,12 +2,14 @@ import { prisma } from "@/db/prisma";
 import { getUser } from "@/app/server";
 import { notFound } from "next/navigation";
 import NoteEditor from "@/components/NoteEditor";
+import { Metadata } from "next";
 
-export default async function NotePage({
-  params,
-}: {
+type Props = {
   params: { noteId: string };
-}) {
+  searchParams: Record<string, string | string[] | undefined>;
+};
+
+export default async function NotePage({ params }: Props) {
   const user = await getUser();
   if (!user) {
     notFound();
