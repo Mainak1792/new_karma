@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate": "pnpm dlx prisma generate && dotenv -e .env.local pnpm dlx prisma migrate dev"
+    "migrate": "pnpm dlx prisma generate && dotenv -e .env.local pnpm dlx prisma migrate dev",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "schema": "src/db/schema.prisma"
