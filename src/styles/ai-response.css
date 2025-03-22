@@ -1,0 +1,47 @@
+.ai-response {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: hsl(var(--muted));
+}
+
+.ai-response h1,
+.ai-response h2,
+.ai-response h3,
+.ai-response h4,
+.ai-response h5,
+.ai-response h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ai-response p {
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.ai-response ul,
+.ai-response ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.ai-response li {
+  margin-bottom: 0.5rem;
+}
+
+.ai-response strong {
+  font-weight: 600;
+}
+
+.ai-response em {
+  font-style: italic;
+}
+
+.ai-response br {
+  display: block;
+  content: "";
+  margin-top: 0.5rem;
+} 
