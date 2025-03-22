@@ -6,12 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SidebarMenuButton } from "./ui/sidebar";
 import Link from "next/link";
+import { ReactNode } from "react";
 
 type Props = {
   note: Note;
+  children?: ReactNode;
 };
 
-function SelectNoteButton({ note }: Props) {
+function SelectNoteButton({ note, children }: Props) {
   const noteId = useSearchParams().get("noteId") || "";
 
   const { noteText: selectedNoteText } = useNote();
@@ -47,9 +49,7 @@ function SelectNoteButton({ note }: Props) {
         <p className="w-full overflow-hidden truncate text-ellipsis whitespace-nowrap">
           {noteText}
         </p>
-        <p className="text-muted-foreground text-xs">
-          {note.updatedAt.toLocaleDateString()}
-        </p>
+        {children}
       </Link>
     </SidebarMenuButton>
   );

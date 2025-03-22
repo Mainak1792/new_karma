@@ -10,7 +10,7 @@ export async function loginAction(email: string, password: string) {
     try {
         console.log('Attempting login with:', { email });
         
-        const cookieStore = cookies();
+        const cookieStore = await cookies();
         const supabase = createServerClient();
 
         const { data, error } = await supabase.auth.signInWithPassword({

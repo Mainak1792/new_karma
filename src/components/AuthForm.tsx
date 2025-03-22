@@ -9,7 +9,7 @@ import { useTransition } from "react";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { loginAction, signUpAction } from "@/actions/users";
+import { loginAction, signUpAction } from "@/actions/user";
 
 type Props = {
   type: "login" | "signUp";

@@ -5,7 +5,7 @@ import { Button } from "./ui/button";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { logOutAction } from "@/actions/users";
+import { logOutAction } from "@/actions/user";
 
 function LogOutButton() {
   const { toast } = useToast();
