@@ -77,9 +77,15 @@ export async function updateSession(request: NextRequest) {
           // First try to get the newest note
           const newestNoteResponse = await fetch(
             `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
+            {
+              headers: {
+                'Cache-Control': 'no-cache',
+              },
+            },
           );
           
           if (!newestNoteResponse.ok) {
+            console.error('Failed to fetch newest note:', await newestNoteResponse.text());
             throw new Error(`Failed to fetch newest note: ${newestNoteResponse.statusText}`);
           }
           
@@ -98,11 +104,13 @@ export async function updateSession(request: NextRequest) {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
+                  'Cache-Control': 'no-cache',
                 },
               },
             );
             
             if (!createNoteResponse.ok) {
+              console.error('Failed to create new note:', await createNoteResponse.text());
               throw new Error(`Failed to create new note: ${createNoteResponse.statusText}`);
             }
             
@@ -117,6 +125,7 @@ export async function updateSession(request: NextRequest) {
         } catch (error) {
           console.error('Error in middleware note handling:', error);
           // On error, just continue without redirecting
+          return supabaseResponse;
         }
       }
     }
