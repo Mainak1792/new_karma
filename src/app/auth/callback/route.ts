@@ -76,7 +76,31 @@ export async function GET(request: Request) {
     }
 
     console.log('User successfully created and verified in database:', createdUser);
-    return NextResponse.redirect(requestUrl.origin);
+
+    // If an initial note was created, redirect to it
+    if (result.noteId) {
+      console.log('Redirecting to initial note:', result.noteId);
+      return NextResponse.redirect(`${requestUrl.origin}/?noteId=${result.noteId}`);
+    }
+    
+    // If no initial note was created (e.g., existing user), create one now
+    try {
+      console.log('No initial note found, creating one now');
+      
+      const initialNote = await prisma.note.create({
+        data: {
+          text: "Welcome to your notes app! Start writing here...",
+          authorId: session.user.id,
+        },
+      });
+      
+      console.log('Successfully created initial note:', initialNote.id);
+      return NextResponse.redirect(`${requestUrl.origin}/?noteId=${initialNote.id}`);
+    } catch (noteError) {
+      console.error('Error creating initial note:', noteError);
+      // Continue with redirect even if note creation fails
+      return NextResponse.redirect(requestUrl.origin);
+    }
   } catch (error: any) {
     console.error('Unexpected error in auth callback:', {
       error: error.message,

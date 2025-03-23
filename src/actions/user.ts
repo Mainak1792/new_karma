@@ -38,9 +38,11 @@ export const createUserInDatabase = async (userId: string, email: string) => {
       return { errorMessage: null };
     }
 
-    // Create user with explicit transaction
-    const user = await prisma.$transaction(async (tx) => {
-      console.log('Starting transaction for user creation');
+    // Create user and initial note within a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      console.log('Starting transaction for user creation with initial note');
+      
+      // Create user
       const newUser = await tx.user.create({
         data: {
           id: userId,
@@ -48,11 +50,28 @@ export const createUserInDatabase = async (userId: string, email: string) => {
         },
       });
       console.log('User created in transaction:', newUser);
-      return newUser;
+      
+      // Create initial note for the user
+      const initialNote = await tx.note.create({
+        data: {
+          text: "Welcome to your notes app! Start writing here...",
+          authorId: userId,
+        },
+      });
+      console.log('Initial note created in transaction:', initialNote.id);
+      
+      return { user: newUser, note: initialNote };
     });
     
-    console.log('User successfully created in database:', user);
-    return { errorMessage: null };
+    console.log('User and initial note successfully created:', {
+      userId: result.user.id,
+      noteId: result.note.id
+    });
+    
+    return { 
+      errorMessage: null,
+      noteId: result.note.id 
+    };
   } catch (error: any) {
     console.error('Error creating user in database:', {
       error: error.message,

@@ -2,10 +2,9 @@
 
 import { User } from "@supabase/supabase-js";
 import { Button } from "./ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import { createNoteAction } from "@/actions/notes";
 
 type Props = {
@@ -14,7 +13,6 @@ type Props = {
 
 function NewNoteButton({ user }: Props) {
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
 
   const handleClickNewNoteButton = async () => {
@@ -22,23 +20,34 @@ function NewNoteButton({ user }: Props) {
       router.push("/login");
     } else {
       setLoading(true);
-
-      const uuid = uuidv4();
-      await createNoteAction(uuid);
-      router.push(`/?noteId=${uuid}&toastType=newNote`);
-
-      setLoading(false);
+      
+      try {
+        // Use the actual user ID from Supabase
+        const { note, errorMessage } = await createNoteAction(user.id);
+        
+        if (errorMessage) {
+          console.error('Error creating note:', errorMessage);
+          // Show error to user if needed
+        } else if (note) {
+          router.push(`/?noteId=${note.id}`);
+        }
+      } catch (error) {
+        console.error('Failed to create note:', error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   return (
     <Button
       onClick={handleClickNewNoteButton}
-      variant="secondary"
-      className="w-24"
+      variant="outline"
+      className="gap-2 px-4"
       disabled={loading}
     >
-      {loading ? <Loader2 className="animate-spin" /> : "New Note"}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+      New Note
     </Button>
   );
 }
