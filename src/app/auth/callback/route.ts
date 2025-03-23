@@ -46,11 +46,22 @@ export async function GET(request: Request) {
     }
 
     // Create user in database
-    console.log('Creating user in database:', { userId: session.user.id, email: session.user.email });
+    console.log('Creating user in database:', { 
+      userId: session.user.id, 
+      email: session.user.email,
+      databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      directUrl: process.env.DIRECT_URL ? 'Set' : 'Not set'
+    });
+    
     const result = await createUserInDatabase(session.user.id, session.user.email!);
 
     if (result.errorMessage) {
-      console.error('Error creating user in database:', result.errorMessage);
+      console.error('Error creating user in database:', {
+        errorMessage: result.errorMessage,
+        userId: session.user.id,
+        email: session.user.email,
+        timestamp: new Date().toISOString()
+      });
       return NextResponse.redirect(`${requestUrl.origin}/login?error=Failed to create user profile`);
     }
 

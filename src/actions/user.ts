@@ -6,14 +6,25 @@ import { prisma } from "@/db/prisma";
 
 export const createUserInDatabase = async (userId: string, email: string) => {
   try {
-    console.log('Starting user creation in database:', { userId, email });
+    console.log('Starting user creation in database:', { 
+      userId, 
+      email,
+      environment: process.env.NODE_ENV,
+      databaseUrl: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      directUrl: process.env.DIRECT_URL ? 'Set' : 'Not set'
+    });
     
-    // Test database connection
+    // Test database connection with a simple query
     try {
-      await prisma.$connect();
-      console.log('Successfully connected to database');
-    } catch (connError) {
-      console.error('Database connection error:', connError);
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('Database connection verified before user creation');
+    } catch (connError: any) {
+      console.error('Database connection error:', {
+        error: connError.message,
+        code: connError.code,
+        meta: connError.meta,
+        timestamp: new Date().toISOString()
+      });
       return { errorMessage: 'Failed to connect to database' };
     }
 
@@ -47,7 +58,8 @@ export const createUserInDatabase = async (userId: string, email: string) => {
       error: error.message,
       code: error.code,
       meta: error.meta,
-      stack: error.stack
+      stack: error.stack,
+      timestamp: new Date().toISOString()
     });
     
     // Handle specific Prisma errors
@@ -56,13 +68,6 @@ export const createUserInDatabase = async (userId: string, email: string) => {
     }
     
     return { errorMessage: error.message || 'Failed to create user in database' };
-  } finally {
-    // Ensure we disconnect properly
-    try {
-      await prisma.$disconnect();
-    } catch (e) {
-      console.error('Error disconnecting from database:', e);
-    }
   }
 };
 
