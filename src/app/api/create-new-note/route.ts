@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { prisma } from "@/db/prisma";
 
 // Add CORS headers
 const corsHeaders = {
@@ -31,8 +31,23 @@ export async function POST(request: NextRequest) {
 
     console.log("Creating new note for user:", userId);
 
+    // Test database connection first
+    try {
+      await prisma.$connect();
+      console.log("Database connected successfully");
+    } catch (dbError) {
+      console.error("Database connection error:", dbError);
+      return NextResponse.json(
+        { error: "Database connection failed" },
+        { 
+          status: 500,
+          headers: corsHeaders
+        }
+      );
+    }
+
     // Create a new note for the user
-    const note = await db.note.create({
+    const note = await prisma.note.create({
       data: {
         text: "", // Start with an empty note
         authorId: userId
@@ -56,5 +71,12 @@ export async function POST(request: NextRequest) {
         headers: corsHeaders
       }
     );
+  } finally {
+    try {
+      await prisma.$disconnect();
+      console.log("Database disconnected successfully");
+    } catch (e) {
+      console.error("Error disconnecting from database:", e);
+    }
   }
 } 
