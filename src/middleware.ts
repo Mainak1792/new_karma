@@ -44,53 +44,18 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname === "/sign-up";
 
   if (isAuthRoute) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      return NextResponse.redirect(
-        new URL("/", request.nextUrl.origin),
-      );
-    }
-  }
-
-  const { searchParams, pathname } = new URL(request.url);
-
-  if (!searchParams.get("noteId") && pathname === "/") {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
-        try {
-          const response = await fetch(
-            `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
-            { signal: controller.signal }
-          );
-          
-          const data = await response.json();
-          clearTimeout(timeoutId);
-          
-          if (data.newestNoteId) {
-            const url = request.nextUrl.clone();
-            url.searchParams.set("noteId", data.newestNoteId);
-            return NextResponse.redirect(url);
-          } else {
-            return supabaseResponse;
-          }
-        } catch (fetchError) {
-          console.error('Error fetching newest note:', fetchError);
-          clearTimeout(timeoutId);
-          return supabaseResponse;
-        }
-      } catch (error) {
-        console.error('Error in middleware:', error);
-        return supabaseResponse;
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      
+      if (user) {
+        return NextResponse.redirect(
+          new URL("/", request.nextUrl.origin),
+        );
       }
+    } catch (error) {
+      console.error('Error in auth middleware:', error);
     }
   }
 
