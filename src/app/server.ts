@@ -2,9 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export async function createClient() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
 
-  const client = createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -29,15 +29,12 @@ export async function createClient() {
       },
     }
   );
-
-  return client;
 }
 
 export async function getUser() {
   try {
     const supabase = await createClient();
     
-    // First try to get the session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -46,24 +43,10 @@ export async function getUser() {
     }
 
     if (!session) {
-      console.log('No active session found');
       return null;
     }
 
-    // If we have a session, get the user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError) {
-      console.error('Error getting user:', userError.message);
-      return null;
-    }
-
-    if (!user) {
-      console.log('No user found in session');
-      return null;
-    }
-
-    return user;
+    return session.user;
   } catch (error) {
     console.error('Unexpected error in getUser:', error);
     return null;
