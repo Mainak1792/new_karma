@@ -11,13 +11,6 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
     db: {
       url: process.env.DATABASE_URL
     }
-  },
-  // Add connection management for serverless
-  connection: {
-    pool: {
-      min: 0,
-      max: 1
-    }
   }
 })
 
