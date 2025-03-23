@@ -63,16 +63,23 @@ export async function updateSession(request: NextRequest) {
 
     if (user) {
       try {
-        const { newestNoteId } = await fetch(
+        const newestNoteResponse = await fetch(
           `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
-        ).then((res) => res.json());
+        );
+        
+        if (!newestNoteResponse.ok) {
+          console.error('Error fetching newest note:', await newestNoteResponse.text());
+          return supabaseResponse;
+        }
+        
+        const { newestNoteId } = await newestNoteResponse.json();
 
         if (newestNoteId) {
           const url = request.nextUrl.clone();
           url.searchParams.set("noteId", newestNoteId);
           return NextResponse.redirect(url);
         } else {
-          const { noteId } = await fetch(
+          const createNoteResponse = await fetch(
             `${request.nextUrl.origin}/api/create-new-note?userId=${user.id}`,
             {
               method: "POST",
@@ -80,14 +87,20 @@ export async function updateSession(request: NextRequest) {
                 "Content-Type": "application/json",
               },
             },
-          ).then((res) => res.json());
+          );
+          
+          if (!createNoteResponse.ok) {
+            console.error('Error creating new note:', await createNoteResponse.text());
+            return supabaseResponse;
+          }
+          
+          const { noteId } = await createNoteResponse.json();
           const url = request.nextUrl.clone();
           url.searchParams.set("noteId", noteId);
           return NextResponse.redirect(url);
         }
       } catch (error) {
         console.error('Error in middleware:', error);
-        // Return without redirecting in case of error
         return supabaseResponse;
       }
     }
