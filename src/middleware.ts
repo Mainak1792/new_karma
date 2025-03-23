@@ -16,48 +16,57 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value),
+            );
+            supabaseResponse = NextResponse.next({
+              request,
+            });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options),
+            );
+          },
         },
       },
-    },
-  );
+    );
 
-  const isAuthRoute =
-    request.nextUrl.pathname === "/login" ||
-    request.nextUrl.pathname === "/sign-up";
+    // Only handle auth routes redirection
+    const isAuthRoute =
+      request.nextUrl.pathname === "/login" ||
+      request.nextUrl.pathname === "/sign-up";
 
-  if (isAuthRoute) {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      
-      if (user) {
-        return NextResponse.redirect(
-          new URL("/", request.nextUrl.origin),
-        );
+    if (isAuthRoute) {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        
+        if (user) {
+          return NextResponse.redirect(
+            new URL("/", request.nextUrl.origin),
+          );
+        }
+      } catch (error) {
+        console.error('Error in auth middleware:', error);
+        // Continue without redirecting
       }
-    } catch (error) {
-      console.error('Error in auth middleware:', error);
     }
-  }
 
-  return supabaseResponse;
+    // Apply supabase session
+    return supabaseResponse;
+  } catch (error) {
+    console.error('Unexpected error in middleware:', error);
+    // Return default response if anything fails
+    return supabaseResponse;
+  }
 }

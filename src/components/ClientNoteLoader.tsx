@@ -22,6 +22,21 @@ export default function ClientNoteLoader({ noteId, userId }: Props) {
       try {
         setIsLoading(true);
         
+        // First check database connection to avoid multiple failed requests
+        try {
+          const response = await fetch('/api/healthcheck');
+          if (!response.ok) {
+            const data = await response.json();
+            console.error('Database connection issue:', data.error);
+            throw new Error('Database connection error. Please try again later.');
+          }
+        } catch (healthError) {
+          console.error('Health check failed:', healthError);
+          setError('Database connection error. Please try again later.');
+          setIsLoading(false);
+          return;
+        }
+        
         // If a specific noteId is provided, fetch that note
         if (noteId) {
           console.log('Fetching specific note:', noteId);
@@ -42,23 +57,36 @@ export default function ClientNoteLoader({ noteId, userId }: Props) {
         
         // Fetch the user's notes
         console.log('Fetching user notes');
-        const response = await fetch(`/api/notes/user/${userId}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch notes');
-        }
-        
-        const data = await response.json();
-        const notes = data.notes || [];
-        
-        if (notes.length > 0) {
-          // If user has notes, redirect to the most recent one
-          const mostRecentNote = notes[0]; // Assuming notes are sorted by date desc
-          console.log('Found existing note, redirecting to:', mostRecentNote.id);
-          router.push(`/?noteId=${mostRecentNote.id}`);
-        } else {
-          // If no notes found, create one
-          console.log('No notes found, creating initial note');
+        try {
+          const response = await fetch(`/api/notes/user/${userId}`);
+          
+          if (!response.ok) {
+            if (response.status === 404) {
+              // User not found - likely a database issue or auth problem
+              console.log('User not found in database, creating a new note');
+              createNewNote();
+              return;
+            } else {
+              throw new Error('Failed to fetch notes');
+            }
+          }
+          
+          const data = await response.json();
+          const notes = data.notes || [];
+          
+          if (notes.length > 0) {
+            // If user has notes, redirect to the most recent one
+            const mostRecentNote = notes[0]; // Assuming notes are sorted by date desc
+            console.log('Found existing note, redirecting to:', mostRecentNote.id);
+            router.push(`/?noteId=${mostRecentNote.id}`);
+          } else {
+            // If no notes found, create one
+            console.log('No notes found, creating initial note');
+            createNewNote();
+          }
+        } catch (fetchError) {
+          console.error('Error fetching notes:', fetchError);
+          // If there's an error fetching notes, try to create a new one
           createNewNote();
         }
       } catch (err) {

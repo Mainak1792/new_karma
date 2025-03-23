@@ -24,52 +24,35 @@ function NewNoteButton({ user }: Props) {
     setLoading(true);
     
     try {
-      // First, check if the user already has notes
-      const response = await fetch(`/api/notes/user/${user.id}`);
+      // Check database connection first
+      const healthResponse = await fetch('/api/healthcheck');
+      if (!healthResponse.ok) {
+        console.error('Database connection issue detected');
+        alert('Database connection error. Please try again later.');
+        setLoading(false);
+        return;
+      }
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.notes && data.notes.length > 0) {
-          // If user has existing notes, create a new blank one
-          const { note, errorMessage } = await createNoteAction(user.id);
-          
-          if (errorMessage) {
-            console.error('Error creating note:', errorMessage);
-            return;
-          }
-          
-          if (note) {
-            router.push(`/?noteId=${note.id}`);
-          }
-        } else {
-          // If no notes exist, create the first one
-          const { note, errorMessage } = await createNoteAction(user.id);
-          
-          if (errorMessage) {
-            console.error('Error creating note:', errorMessage);
-            return;
-          }
-          
-          if (note) {
-            router.push(`/?noteId=${note.id}`);
-          }
-        }
-      } else {
-        // If API call fails, fall back to direct note creation
+      // Proceed with note creation
+      try {
         const { note, errorMessage } = await createNoteAction(user.id);
         
         if (errorMessage) {
           console.error('Error creating note:', errorMessage);
+          alert(`Failed to create note: ${errorMessage}`);
           return;
         }
         
         if (note) {
           router.push(`/?noteId=${note.id}`);
         }
+      } catch (createError) {
+        console.error('Error in create note action:', createError);
+        alert('Failed to create note. Please try again.');
       }
     } catch (error) {
       console.error('Failed to handle note creation:', error);
+      alert('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }

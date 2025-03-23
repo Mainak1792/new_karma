@@ -45,6 +45,12 @@ export async function getUser() {
       return null;
     }
 
+    if (!user) {
+      // Don't log as error - it's a normal state for unauthenticated users
+      console.log('No authenticated user found');
+      return null;
+    }
+
     return user;
   } catch (error) {
     console.error('Unexpected error in getUser:', error);
