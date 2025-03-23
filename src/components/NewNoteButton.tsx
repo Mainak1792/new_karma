@@ -1,47 +1,46 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { User } from "@supabase/supabase-js";
+import { Button } from "./ui/button";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { toast } from "sonner";
-import { createNote } from "@/actions/notes";
+import { v4 as uuidv4 } from "uuid";
+import { createNoteAction } from "@/actions/notes";
 
-export default function NewNoteButton() {
+type Props = {
+  user: User | null;
+};
+
+function NewNoteButton({ user }: Props) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
-  const handleCreateNote = async () => {
-    startTransition(async () => {
-      try {
-        const { error, noteId } = await createNote();
-        
-        if (error) {
-          toast.error(error);
-          return;
-        }
-        
-        if (noteId) {
-          toast.success("New note created!");
-          router.push(`/?noteId=${noteId}`);
-        }
-      } catch (err) {
-        console.error("Error creating note:", err);
-        toast.error("Failed to create note");
-      }
-    });
+  const [loading, setLoading] = useState(false);
+
+  const handleClickNewNoteButton = async () => {
+    if (!user) {
+      router.push("/login");
+    } else {
+      setLoading(true);
+
+      const uuid = uuidv4();
+      await createNoteAction(uuid);
+      router.push(`/?noteId=${uuid}&toastType=newNote`);
+
+      setLoading(false);
+    }
   };
 
   return (
-    <Button 
-      onClick={handleCreateNote} 
-      disabled={isPending} 
-      variant="outline" 
-      size="icon"
-      className="flex h-8 w-8 rounded-full"
+    <Button
+      onClick={handleClickNewNoteButton}
+      variant="secondary"
+      className="w-24"
+      disabled={loading}
     >
-      <Plus className="h-4 w-4" />
-      <span className="sr-only">New note</span>
+      {loading ? <Loader2 className="animate-spin" /> : "New Note"}
     </Button>
   );
 }
+
+export default NewNoteButton;

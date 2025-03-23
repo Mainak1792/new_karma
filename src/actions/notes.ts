@@ -6,7 +6,6 @@ import { handleError } from "@/lib/utils";
 import openai from "@/openai";
 import { ChatCompletionMessageParam } from "openai/resources/index.mjs";
 import { Note } from "@prisma/client";
-import { revalidatePath } from "next/cache";
 
 export async function getNotesAction(userId: string) {
   try {
@@ -25,79 +24,53 @@ export async function getNotesAction(userId: string) {
   }
 }
 
-export async function createNote() {
+export async function createNoteAction(userId: string) {
   try {
-    const user = await getUser();
-    
-    if (!user) {
-      console.error("Failed to create note: No authenticated user");
-      return { error: "You must be logged in to create notes", noteId: null };
-    }
-    
-    console.log("Creating note for user:", user.id);
-    
     const note = await prisma.note.create({
       data: {
-        text: "", // Start with an empty note
-        authorId: user.id
-      }
+        text: "",
+        authorId: userId,
+      },
     });
-    
-    console.log("Note created successfully:", note.id);
-    revalidatePath("/");
-    
-    return { 
-      error: null,
-      noteId: note.id 
-    };
+    return { note, errorMessage: null };
   } catch (error) {
-    console.error("Error creating note:", error);
-    return { 
-      error: "Failed to create note. Please try again later.", 
-      noteId: null 
-    };
+    console.error('Error creating note:', error);
+    return { note: null, errorMessage: 'Failed to create note' };
   }
 }
 
-export async function updateNote(noteId: string, text: string) {
+export async function updateNoteAction(noteId: string, text: string) {
   try {
     const user = await getUser();
-    
     if (!user) {
-      return { success: false, error: "You must be logged in to update notes" };
+      return { note: null, errorMessage: 'You must be logged in to update a note' };
     }
-    
-    // Verify the note belongs to the user
-    const note = await prisma.note.findUnique({
+
+    // First check if the note exists and belongs to the user
+    const existingNote = await prisma.note.findUnique({
       where: {
         id: noteId,
-        authorId: user.id
-      }
-    });
-    
-    if (!note) {
-      return { success: false, error: "Note not found or you don't have permission to update it" };
-    }
-    
-    await prisma.note.update({
-      where: {
-        id: noteId
+        authorId: user.id,
       },
-      data: {
-        text,
-        updatedAt: new Date()
-      }
     });
-    
-    revalidatePath("/");
-    
-    return { success: true, error: null };
+
+    if (!existingNote) {
+      return { note: null, errorMessage: 'Note not found or you do not have permission to edit it' };
+    }
+
+    // Update the note
+    const note = await prisma.note.update({
+      where: { 
+        id: noteId,
+        authorId: user.id, // Ensure user owns the note
+      },
+      data: { text },
+    });
+
+    return { note, errorMessage: null };
   } catch (error) {
-    console.error("Error updating note:", error);
-    return { 
-      success: false, 
-      error: "Failed to update note. Please try again later." 
-    };
+    console.error('Error updating note:', error);
+    return { note: null, errorMessage: 'Failed to update note' };
   }
 }
 
