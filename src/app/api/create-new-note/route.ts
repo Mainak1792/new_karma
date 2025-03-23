@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/db/prisma";
+import db from "@/lib/db";
 
 // Add CORS headers
 const corsHeaders = {
@@ -11,18 +11,6 @@ const corsHeaders = {
 // Handle OPTIONS request for CORS
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
-}
-
-// Function to ensure database connection
-async function ensureConnection() {
-  try {
-    await prisma.$connect();
-    console.log("Database connected successfully");
-    return true;
-  } catch (error) {
-    console.error("Database connection error:", error);
-    return false;
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -43,36 +31,8 @@ export async function POST(request: NextRequest) {
 
     console.log("Creating new note for user:", userId);
 
-    // Ensure database connection
-    const isConnected = await ensureConnection();
-    if (!isConnected) {
-      return NextResponse.json(
-        { error: "Database connection failed" },
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
-      );
-    }
-
-    // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      console.error("User not found:", userId);
-      return NextResponse.json(
-        { error: "User not found" },
-        { 
-          status: 404,
-          headers: corsHeaders
-        }
-      );
-    }
-
     // Create a new note for the user
-    const note = await prisma.note.create({
+    const note = await db.note.create({
       data: {
         text: "", // Start with an empty note
         authorId: userId
@@ -96,12 +56,5 @@ export async function POST(request: NextRequest) {
         headers: corsHeaders
       }
     );
-  } finally {
-    try {
-      await prisma.$disconnect();
-      console.log("Database disconnected successfully");
-    } catch (e) {
-      console.error("Error disconnecting from database:", e);
-    }
   }
 } 

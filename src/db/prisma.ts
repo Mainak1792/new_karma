@@ -11,6 +11,13 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
     db: {
       url: process.env.DATABASE_URL
     }
+  },
+  // Add connection management for serverless
+  connection: {
+    pool: {
+      min: 0,
+      max: 1
+    }
   }
 })
 
@@ -36,8 +43,8 @@ async function testConnection(retries = 3, delay = 1000) {
   return false;
 }
 
-// Connect to the database on startup to detect issues early
-if (process.env.NODE_ENV === 'production') {
+// Only test connection in development
+if (process.env.NODE_ENV === 'development') {
   testConnection()
     .then(success => {
       if (!success) {
@@ -49,4 +56,5 @@ if (process.env.NODE_ENV === 'production') {
     });
 }
 
+// Store prisma instance in development
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
