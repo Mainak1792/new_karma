@@ -13,6 +13,18 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
+// Function to ensure database connection
+async function ensureConnection() {
+  try {
+    await prisma.$connect();
+    console.log("Database connected successfully");
+    return true;
+  } catch (error) {
+    console.error("Database connection error:", error);
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log("Create new note request received");
@@ -31,16 +43,29 @@ export async function POST(request: NextRequest) {
 
     console.log("Creating new note for user:", userId);
 
-    // Test database connection first
-    try {
-      await prisma.$connect();
-      console.log("Database connected successfully");
-    } catch (dbError) {
-      console.error("Database connection error:", dbError);
+    // Ensure database connection
+    const isConnected = await ensureConnection();
+    if (!isConnected) {
       return NextResponse.json(
         { error: "Database connection failed" },
         { 
           status: 500,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      console.error("User not found:", userId);
+      return NextResponse.json(
+        { error: "User not found" },
+        { 
+          status: 404,
           headers: corsHeaders
         }
       );
