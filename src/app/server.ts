@@ -37,7 +37,20 @@ export async function getUser() {
   try {
     const supabase = await createClient();
     
-    // Get the user from Supabase auth only
+    // First try to get the session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('Error getting session:', sessionError.message);
+      return null;
+    }
+
+    if (!session) {
+      console.log('No active session found');
+      return null;
+    }
+
+    // If we have a session, get the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
@@ -46,8 +59,7 @@ export async function getUser() {
     }
 
     if (!user) {
-      // Don't log as error - it's a normal state for unauthenticated users
-      console.log('No authenticated user found');
+      console.log('No user found in session');
       return null;
     }
 

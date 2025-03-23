@@ -16,57 +16,82 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value),
-            );
-            supabaseResponse = NextResponse.next({
-              request,
-            });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options),
-            );
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options),
+          );
         },
       },
-    );
+    },
+  );
 
-    // Only handle auth routes redirection
-    const isAuthRoute =
-      request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/sign-up";
+  const isAuthRoute =
+    request.nextUrl.pathname === "/login" ||
+    request.nextUrl.pathname === "/sign-up";
 
-    if (isAuthRoute) {
+  if (isAuthRoute) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      return NextResponse.redirect(
+        new URL("/", request.nextUrl.origin),
+      );
+    }
+  }
+
+  const { searchParams, pathname } = new URL(request.url);
+
+  if (!searchParams.get("noteId") && pathname === "/") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        
-        if (user) {
-          return NextResponse.redirect(
-            new URL("/", request.nextUrl.origin),
-          );
+        const { newestNoteId } = await fetch(
+          `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
+        ).then((res) => res.json());
+
+        if (newestNoteId) {
+          const url = request.nextUrl.clone();
+          url.searchParams.set("noteId", newestNoteId);
+          return NextResponse.redirect(url);
+        } else {
+          const { noteId } = await fetch(
+            `${request.nextUrl.origin}/api/create-new-note?userId=${user.id}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            },
+          ).then((res) => res.json());
+          const url = request.nextUrl.clone();
+          url.searchParams.set("noteId", noteId);
+          return NextResponse.redirect(url);
         }
       } catch (error) {
-        console.error('Error in auth middleware:', error);
-        // Continue without redirecting
+        console.error('Error in middleware:', error);
+        // Return without redirecting in case of error
+        return supabaseResponse;
       }
     }
-
-    // Apply supabase session
-    return supabaseResponse;
-  } catch (error) {
-    console.error('Unexpected error in middleware:', error);
-    // Return default response if anything fails
-    return supabaseResponse;
   }
+
+  return supabaseResponse;
 }

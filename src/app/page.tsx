@@ -3,15 +3,12 @@ import AskAIButton from "@/components/AskAIButton";
 import NewNoteButton from "@/components/NewNoteButton";
 import NoteTextInput from "@/components/NoteTextInput";
 import HomeToast from "@/components/HomeToast";
+import { prisma } from "@/db/prisma";
 import { getUser } from "./server";
-import ClientNoteLoader from "@/components/ClientNoteLoader";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-export const dynamic = 'force-dynamic';
-export const fetchCache = 'force-no-store';
 
 async function HomePage({ searchParams }: Props) {
   const noteIdParam = (await searchParams).noteId;
@@ -21,20 +18,18 @@ async function HomePage({ searchParams }: Props) {
     ? noteIdParam![0]
     : noteIdParam || "";
 
+  const note = await prisma.note.findUnique({
+    where: { id: noteId, authorId: user?.id },
+  });
+
   return (
     <div className="flex h-full flex-col items-center gap-4">
-      <div className="flex w-full max-w-4xl justify-between items-center">
-        <NewNoteButton user={user} />
+      <div className="flex w-full max-w-4xl justify-end gap-2">
         <AskAIButton user={user} />
+        {/* <NewNoteButton user={user} /> */}
       </div>
 
-      {user ? (
-        <ClientNoteLoader noteId={noteId} userId={user.id} />
-      ) : (
-        <div className="flex h-[80vh] w-full items-center justify-center">
-          <p className="text-muted-foreground">Please sign in to view or create notes.</p>
-        </div>
-      )}
+      <NoteTextInput noteId={noteId} startingNoteText={note?.text || ""} />
 
       <HomeToast />
     </div>
