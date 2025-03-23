@@ -26,12 +26,48 @@ export async function getNotesAction(userId: string) {
 
 export async function createNoteAction(userId: string) {
   try {
+    console.log('Starting note creation for user:', userId);
+    
+    // Check if the user exists in the database
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      console.error('Attempted to create a note for a nonexistent user:', userId);
+      
+      try {
+        // Try to get user from Supabase
+        const { getUser } = await import('@/app/server');
+        const supabaseUser = await getUser();
+        
+        if (supabaseUser && supabaseUser.id === userId && supabaseUser.email) {
+          console.log('User found in Supabase but not in database. Creating user:', {
+            id: supabaseUser.id,
+            email: supabaseUser.email
+          });
+          
+          // Create user in database
+          const { createUserInDatabase } = await import('@/actions/user');
+          await createUserInDatabase(userId, supabaseUser.email);
+        } else {
+          return { note: null, errorMessage: 'User not found in authentication system' };
+        }
+      } catch (authError) {
+        console.error('Error getting/creating user:', authError);
+        return { note: null, errorMessage: 'Failed to authenticate user' };
+      }
+    }
+
+    // Now create the note
     const note = await prisma.note.create({
       data: {
         text: "",
         authorId: userId,
       },
     });
+    
+    console.log('Successfully created note:', note.id);
     return { note, errorMessage: null };
   } catch (error) {
     console.error('Error creating note:', error);
