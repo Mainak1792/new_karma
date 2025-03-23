@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/db/prisma";
 
 export async function middleware(request: NextRequest) {
   try {
@@ -74,6 +75,21 @@ export async function updateSession(request: NextRequest) {
 
       if (user) {
         try {
+          // Ensure user exists in database
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id }
+          });
+
+          if (!dbUser) {
+            // Create user if they don't exist
+            await prisma.user.create({
+              data: {
+                id: user.id,
+                email: user.email || '',
+              }
+            });
+          }
+
           // First try to get the newest note
           const newestNoteResponse = await fetch(
             `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,

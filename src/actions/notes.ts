@@ -26,6 +26,16 @@ export async function getNotesAction(userId: string) {
 
 export async function createNoteAction(userId: string) {
   try {
+    // First verify that the user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user) {
+      console.error('User not found:', userId);
+      return { note: null, errorMessage: 'User not found' };
+    }
+
     const note = await prisma.note.create({
       data: {
         text: "",
