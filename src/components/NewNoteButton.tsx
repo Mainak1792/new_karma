@@ -18,24 +18,60 @@ function NewNoteButton({ user }: Props) {
   const handleClickNewNoteButton = async () => {
     if (!user) {
       router.push("/login");
-    } else {
-      setLoading(true);
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // First, check if the user already has notes
+      const response = await fetch(`/api/notes/user/${user.id}`);
       
-      try {
-        // Use the actual user ID from Supabase
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.notes && data.notes.length > 0) {
+          // If user has existing notes, create a new blank one
+          const { note, errorMessage } = await createNoteAction(user.id);
+          
+          if (errorMessage) {
+            console.error('Error creating note:', errorMessage);
+            return;
+          }
+          
+          if (note) {
+            router.push(`/?noteId=${note.id}`);
+          }
+        } else {
+          // If no notes exist, create the first one
+          const { note, errorMessage } = await createNoteAction(user.id);
+          
+          if (errorMessage) {
+            console.error('Error creating note:', errorMessage);
+            return;
+          }
+          
+          if (note) {
+            router.push(`/?noteId=${note.id}`);
+          }
+        }
+      } else {
+        // If API call fails, fall back to direct note creation
         const { note, errorMessage } = await createNoteAction(user.id);
         
         if (errorMessage) {
           console.error('Error creating note:', errorMessage);
-          // Show error to user if needed
-        } else if (note) {
+          return;
+        }
+        
+        if (note) {
           router.push(`/?noteId=${note.id}`);
         }
-      } catch (error) {
-        console.error('Failed to create note:', error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error('Failed to handle note creation:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

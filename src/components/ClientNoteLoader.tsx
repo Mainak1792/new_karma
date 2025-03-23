@@ -5,7 +5,6 @@ import { createNoteAction } from '@/actions/notes';
 import { useRouter } from 'next/navigation';
 import { Spinner } from './ui/spinner';
 import NoteTextInput from './NoteTextInput';
-import { prisma } from '@/db/prisma';
 
 type Props = {
   noteId: string;
@@ -19,98 +18,69 @@ export default function ClientNoteLoader({ noteId, userId }: Props) {
   const router = useRouter();
 
   useEffect(() => {
-    async function loadOrCreateNote() {
-      if (!noteId) {
-        // Create a new note
-        createNewNote();
-        return;
-      }
-      
+    async function loadOrFetchNotes() {
       try {
         setIsLoading(true);
         
-        // Load note directly from client side with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+        // If a specific noteId is provided, fetch that note
+        if (noteId) {
+          console.log('Fetching specific note:', noteId);
+          const response = await fetch(`/api/notes?noteId=${noteId}&userId=${userId}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            setNoteText(data.text || '');
+            setIsLoading(false);
+            return;
+          } else if (response.status !== 404) {
+            // If there's an error other than 404, show it
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to load note');
+          }
+          // If 404, continue to fetch user's notes
+        }
         
-        try {
-          const response = await fetch(`/api/notes?noteId=${noteId}&userId=${userId}`, {
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-          
-          if (!response.ok) {
-            // If note not found, create a new one
-            if (response.status === 404) {
-              createNewNote();
-              return;
-            }
-            
-            throw new Error('Failed to load note');
-          }
-          
-          const data = await response.json();
-          setNoteText(data.text || '');
-          setIsLoading(false);
-        } catch (fetchError: any) {
-          // If timeout occurred or other network issue
-          if (fetchError.name === 'AbortError') {
-            console.error('Fetch request timed out');
-            createNewNote(); // Try creating a new note instead
-          } else {
-            throw fetchError;
-          }
+        // Fetch the user's notes
+        console.log('Fetching user notes');
+        const response = await fetch(`/api/notes/user/${userId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch notes');
+        }
+        
+        const data = await response.json();
+        const notes = data.notes || [];
+        
+        if (notes.length > 0) {
+          // If user has notes, redirect to the most recent one
+          const mostRecentNote = notes[0]; // Assuming notes are sorted by date desc
+          console.log('Found existing note, redirecting to:', mostRecentNote.id);
+          router.push(`/?noteId=${mostRecentNote.id}`);
+        } else {
+          // If no notes found, create one
+          console.log('No notes found, creating initial note');
+          createNewNote();
         }
       } catch (err) {
-        console.error('Error loading note:', err);
-        setError('Failed to load note');
+        console.error('Error loading notes:', err);
+        setError('Failed to load notes');
         setIsLoading(false);
       }
     }
 
     async function createNewNote() {
       try {
-        console.log('Creating new note for user:', userId);
-        
-        // Try using the API endpoint first
-        try {
-          console.log('Attempting to create note via API for user:', userId);
-          const response = await fetch('/api/notes/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ userId }),
-          });
-          
-          const data = await response.json();
-          
-          if (!response.ok || !data.success) {
-            console.error('API note creation failed:', data.error);
-            throw new Error(data.error || 'Failed to create note via API');
-          }
-          
-          console.log('Successfully created note via API:', data.note.id);
-          router.push(`/?noteId=${data.note.id}`);
-          return;
-        } catch (apiError) {
-          console.error('Error creating note via API, falling back to server action:', apiError);
-          // Fall back to server action
-        }
-        
-        // Fallback: use server action
         const { note, errorMessage } = await createNoteAction(userId);
         
         if (errorMessage) {
-          console.error('Error from createNoteAction:', errorMessage);
+          console.error('Error creating note:', errorMessage);
           setError(errorMessage);
           setIsLoading(false);
           return;
         }
 
         if (note) {
-          console.log('Note created successfully via server action:', note.id);
+          console.log('Note created successfully:', note.id);
           router.push(`/?noteId=${note.id}`);
         } else {
           setError('Failed to create note');
@@ -123,7 +93,7 @@ export default function ClientNoteLoader({ noteId, userId }: Props) {
       }
     }
 
-    loadOrCreateNote();
+    loadOrFetchNotes();
   }, [noteId, userId, router]);
 
   if (isLoading) {
@@ -132,7 +102,7 @@ export default function ClientNoteLoader({ noteId, userId }: Props) {
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
           <p className="text-sm text-muted-foreground">
-            {noteId ? 'Loading note...' : 'Creating a new note...'}
+            {noteId ? 'Loading note...' : 'Fetching your notes...'}
           </p>
         </div>
       </div>
