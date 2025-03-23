@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "migrate": "pnpm dlx prisma generate && dotenv -e .env.local pnpm dlx prisma migrate dev",
-    "test-db": "tsx src/scripts/test-db.ts"
+    "test-db": "tsx src/scripts/test-db.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "schema": "src/db/schema.prisma"
