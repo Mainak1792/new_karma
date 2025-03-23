@@ -15,6 +15,10 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <AuthForm type="login" />
+        <CardTitle className="text-2xl font-bold">Made with ❤️in Delhi </CardTitle>
+        <CardDescription className="text-muted-foreground">
+          Copyright © 2025 All rights by <a href="https://www.mainakchakraborty.com/" className="text-blue-500 hover:text-blue-600">Mainak</a>
+        </CardDescription>
       </Card>
     </div>
   )
