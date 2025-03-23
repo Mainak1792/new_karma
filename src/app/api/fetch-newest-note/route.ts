@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/db/prisma';
 
+export const maxDuration = 60; // Set max duration to 60 seconds for paid plans
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -10,23 +12,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    // Check if user exists in the database
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!user) {
-      console.error('User not found in database:', userId);
-      return NextResponse.json({ 
-        error: 'User not found in database', 
-        newestNoteId: null 
-      }, { status: 404 });
-    }
-
-    // Find the newest note for this user
+    // Skip checking if the user exists to reduce database operations
+    // Directly find the newest note for this user
     const newestNote = await prisma.note.findFirst({
       where: { authorId: userId },
       orderBy: { createdAt: 'desc' },
+      select: { id: true }, // Only select the ID field for efficiency
     });
 
     return NextResponse.json({ 

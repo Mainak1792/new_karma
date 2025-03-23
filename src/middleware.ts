@@ -63,31 +63,32 @@ export async function updateSession(request: NextRequest) {
 
     if (user) {
       try {
-        const { newestNoteId } = await fetch(
-          `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
-        ).then((res) => res.json());
-
-        if (newestNoteId) {
-          const url = request.nextUrl.clone();
-          url.searchParams.set("noteId", newestNoteId);
-          return NextResponse.redirect(url);
-        } else {
-          const { noteId } = await fetch(
-            `${request.nextUrl.origin}/api/create-new-note?userId=${user.id}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            },
-          ).then((res) => res.json());
-          const url = request.nextUrl.clone();
-          url.searchParams.set("noteId", noteId);
-          return NextResponse.redirect(url);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+          const response = await fetch(
+            `${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`,
+            { signal: controller.signal }
+          );
+          
+          const data = await response.json();
+          clearTimeout(timeoutId);
+          
+          if (data.newestNoteId) {
+            const url = request.nextUrl.clone();
+            url.searchParams.set("noteId", data.newestNoteId);
+            return NextResponse.redirect(url);
+          } else {
+            return supabaseResponse;
+          }
+        } catch (fetchError) {
+          console.error('Error fetching newest note:', fetchError);
+          clearTimeout(timeoutId);
+          return supabaseResponse;
         }
       } catch (error) {
         console.error('Error in middleware:', error);
-        // Return without redirecting in case of error
         return supabaseResponse;
       }
     }
