@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: { user }, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -42,14 +42,21 @@ export default function LoginPage() {
         throw signInError
       }
 
-      // Get the user to verify authentication
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError) {
-        throw userError
-      }
-
       if (user) {
+        // Create or update user in the users table
+        const { error: userError } = await supabase
+          .from('users')
+          .upsert({
+            id: user.id,
+            email: user.email,
+            updated_at: new Date().toISOString()
+          })
+
+        if (userError) {
+          console.error('Error creating/updating user:', userError)
+          throw new Error('Failed to create user profile')
+        }
+
         // Force a hard refresh to ensure all server components are updated
         window.location.href = '/'
       }
