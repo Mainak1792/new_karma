@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,27 +17,41 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
 
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push('/')
+      }
+    }
+    checkUser()
+  }, [router, supabase.auth])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) {
-        throw error
+      if (signInError) {
+        throw signInError
       }
 
       // Get the user to verify authentication
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
       
+      if (userError) {
+        throw userError
+      }
+
       if (user) {
-        router.push('/')
-        router.refresh()
+        // Force a hard refresh to ensure all server components are updated
+        window.location.href = '/'
       }
     } catch (error: any) {
       setError(error.message)
