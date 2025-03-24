@@ -9,8 +9,8 @@ export async function middleware(request: NextRequest) {
 
     // Handle auth routes
     if (request.nextUrl.pathname.startsWith('/auth')) {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
         return NextResponse.redirect(new URL('/', request.url))
       }
       return res
@@ -18,14 +18,14 @@ export async function middleware(request: NextRequest) {
 
     // Handle root path
     if (request.nextUrl.pathname === '/') {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         return NextResponse.redirect(new URL('/login', request.url))
       }
 
       // Get user's newest note
       try {
-        const response = await fetch(`${request.nextUrl.origin}/api/fetch-newest-note?userId=${session.user.id}`, {
+        const response = await fetch(`${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`, {
           headers: {
             'Content-Type': 'application/json',
           },
@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
         const data = await response.json()
         if (!data.newestNoteId) {
           // Create new note if none exists
-          const createResponse = await fetch(`${request.nextUrl.origin}/api/create-new-note?userId=${session.user.id}`, {
+          const createResponse = await fetch(`${request.nextUrl.origin}/api/create-new-note?userId=${user.id}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
