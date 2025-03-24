@@ -119,64 +119,19 @@ export async function updateSession(request: NextRequest) {
             if (createNoteData.noteId) {
               const url = request.nextUrl.clone();
               url.searchParams.set("noteId", createNoteData.noteId);
-    // Handle root path and note routes
-    if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/notes/')) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-
-      // Only handle note creation/fetching on root path
-      if (request.nextUrl.pathname === '/') {
-        try {
-          // Get user's newest note
-          const response = await fetch(`${request.nextUrl.origin}/api/fetch-newest-note?userId=${user.id}`, {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            cache: 'no-store'
-          })
-
-          if (!response.ok) {
-            console.error('Failed to fetch newest note:', await response.text())
-            return res
-          }
-
-          const data = await response.json()
-          if (!data.newestNoteId) {
-            // Create new note if none exists
-            const createResponse = await fetch(`${request.nextUrl.origin}/api/create-new-note?userId=${user.id}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              cache: 'no-store'
-            })
-
-            if (!createResponse.ok) {
-              console.error('Failed to create new note:', await createResponse.text())
-              return res
+              return NextResponse.redirect(url);
             }
-
-            const createData = await createResponse.json()
-            return NextResponse.redirect(new URL(`/notes/${createData.noteId}`, request.url))
           }
-
-          return NextResponse.redirect(new URL(`/notes/${data.newestNoteId}`, request.url))
         } catch (error) {
-          console.error('Error in note handling:', error)
-          return res
+          console.error('Error in note handling:', error);
+          return supabaseResponse;
         }
       }
     }
 
-    return res
+    return supabaseResponse;
   } catch (error) {
-    console.error('Middleware error:', error)
-    return NextResponse.next()
+    console.error('Middleware error:', error);
+    return NextResponse.next();
   }
-}
-
-export const config = {
-  matcher: ['/', '/auth/:path*', '/login', '/register', '/notes/:path*']
 }
