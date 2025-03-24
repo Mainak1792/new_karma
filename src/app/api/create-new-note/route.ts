@@ -15,68 +15,61 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Create new note request received");
     const userId = request.nextUrl.searchParams.get("userId");
 
     if (!userId) {
       console.error("Create note error: User ID is required");
       return NextResponse.json(
         { error: "User ID is required" },
-        { 
-          status: 400,
-          headers: corsHeaders
-        }
+        { status: 400 }
       );
     }
 
-    console.log("Creating new note for user:", userId);
-
-    // Test database connection first
+    // First verify user exists
     try {
-      await prisma.$connect();
-      console.log("Database connected successfully");
-    } catch (dbError) {
-      console.error("Database connection error:", dbError);
+      // Try to verify/create user first
+      const verifyResponse = await fetch(`${request.nextUrl.origin}/api/verify-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          email: '', // This will be updated when we get the user from Supabase
+        }),
+      });
+
+      if (!verifyResponse.ok) {
+        throw new Error('Failed to verify user');
+      }
+
+      const { user } = await verifyResponse.json();
+      if (!user) {
+        throw new Error('User verification failed');
+      }
+
+      // Create a new note for the verified user
+      const note = await prisma.note.create({
+        data: {
+          text: "",
+          authorId: userId,
+        },
+      });
+
+      console.log("Successfully created new note:", note.id);
+      return NextResponse.json({ noteId: note.id }, { status: 201 });
+    } catch (error: any) {
+      console.error("Error creating note:", error);
       return NextResponse.json(
-        { error: "Database connection failed" },
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
+        { error: error.message || "Failed to create note" },
+        { status: 500 }
       );
     }
-
-    // Create a new note for the user
-    const note = await prisma.note.create({
-      data: {
-        text: "", // Start with an empty note
-        authorId: userId
-      }
-    });
-
-    console.log("Successfully created new note:", note.id);
+  } catch (error: any) {
+    console.error("Error in create-new-note:", error);
     return NextResponse.json(
-      { noteId: note.id },
-      { 
-        status: 201,
-        headers: corsHeaders
-      }
+      { error: error.message || "Failed to process request" },
+      { status: 500 }
     );
-  } catch (error) {
-    console.error("Error creating new note:", error);
-    return NextResponse.json(
-      { error: "Failed to create note" },
-      { 
-        status: 500,
-        headers: corsHeaders
-      }
-    );
-  } finally {
-    try {
-      await prisma.$disconnect();
-      console.log("Database disconnected successfully");
-    } catch (e) {
-      console.error("Error disconnecting from database:", e);
-    }
   }
 } 

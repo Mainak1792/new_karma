@@ -1,5 +1,4 @@
 import { createClient } from '@/app/auth';
-import { createUserInDatabase } from '@/actions/user';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/db/prisma';
 
@@ -29,42 +28,67 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${requestUrl.origin}/login?error=No user data received`);
     }
 
+    // Ensure email is verified
+    if (!session.user.email_confirmed_at) {
+      console.error('Email not verified');
+      return NextResponse.redirect(`${requestUrl.origin}/login?error=Please verify your email first`);
+    }
+
     console.log('User data from session:', { 
       id: session.user.id, 
       email: session.user.email,
-      role: session.user.role,
       emailConfirmed: session.user.email_confirmed_at 
     });
 
-    // Test database connection
-    try {
-      await prisma.$connect();
-      console.log('Successfully connected to database in callback');
-    } catch (connError) {
-      console.error('Database connection error in callback:', connError);
-      return NextResponse.redirect(`${requestUrl.origin}/login?error=Database connection failed`);
-    }
-
-    // Create user in database
-    console.log('Creating user in database:', { userId: session.user.id, email: session.user.email });
-    const result = await createUserInDatabase(session.user.id, session.user.email!);
-
-    if (result.errorMessage) {
-      console.error('Error creating user in database:', result.errorMessage);
-      return NextResponse.redirect(`${requestUrl.origin}/login?error=Failed to create user profile`);
-    }
-
-    // Verify user was created
-    const createdUser = await prisma.user.findUnique({
+    // Check if user already exists in database
+    const existingUser = await prisma.user.findUnique({
       where: { id: session.user.id }
     });
 
-    if (!createdUser) {
-      console.error('User not found in database after creation');
+    if (!existingUser) {
+      // Create user if they don't exist
+      try {
+        console.log('Creating new user in database:', {
+          id: session.user.id,
+          email: session.user.email
+        });
+
+        const newUser = await prisma.user.create({
+          data: {
+            id: session.user.id,
+            email: session.user.email!,
+          },
+        });
+        console.log('Created new user in database:', newUser);
+      } catch (createError: any) {
+        console.error('Error creating user in database:', {
+          error: createError.message,
+          code: createError.code,
+          meta: createError.meta
+        });
+        
+        if (createError.code === 'P2002') {
+          // If error is due to unique constraint, user probably exists
+          console.log('User likely exists, proceeding with redirect');
+        } else {
+          return NextResponse.redirect(`${requestUrl.origin}/login?error=Failed to create user profile`);
+        }
+      }
+    } else {
+      console.log('User already exists in database:', existingUser);
+    }
+
+    // Verify user exists after creation attempt
+    const finalCheck = await prisma.user.findUnique({
+      where: { id: session.user.id }
+    });
+
+    if (!finalCheck) {
+      console.error('Failed to verify user creation');
       return NextResponse.redirect(`${requestUrl.origin}/login?error=Failed to verify user creation`);
     }
 
-    console.log('User successfully created and verified in database:', createdUser);
+    console.log('User verified in database:', finalCheck);
     return NextResponse.redirect(requestUrl.origin);
   } catch (error: any) {
     console.error('Unexpected error in auth callback:', {
@@ -72,11 +96,5 @@ export async function GET(request: Request) {
       stack: error.stack
     });
     return NextResponse.redirect(`${requestUrl.origin}/login?error=Unexpected error occurred`);
-  } finally {
-    try {
-      await prisma.$disconnect();
-    } catch (e) {
-      console.error('Error disconnecting from database:', e);
-    }
   }
 } 

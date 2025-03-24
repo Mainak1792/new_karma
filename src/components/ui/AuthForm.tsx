@@ -47,6 +47,7 @@ export default function AuthForm({ type }: Props) {
                     router.push("/");
                     router.refresh();
                 } else {
+                    // Register new user in Supabase only
                     const { data, error } = await supabase.auth.signUp({
                         email,
                         password,
@@ -57,6 +58,7 @@ export default function AuthForm({ type }: Props) {
 
                     if (error) throw error;
 
+                    // Show success message and redirect to login
                     toast.success("Registration successful! Please check your email to verify your account.");
                     router.push("/login");
                 }
