@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // Add CORS headers
 const corsHeaders = {
@@ -26,11 +26,13 @@ export async function GET(request: NextRequest) {
     }
 
     // First verify the user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
 
-    if (!user) {
+    if (userError || !user) {
       console.error(`User not found with ID: ${userId}`);
       return NextResponse.json(
         { error: 'User not found' },
@@ -39,18 +41,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the newest note
-    const newestNote = await prisma.note.findFirst({
-      where: { authorId: userId },
-      orderBy: { updatedAt: 'desc' }
-    });
+    const { data: notes, error: notesError } = await supabase
+      .from('notes')
+      .select('id')
+      .eq('author_id', userId)
+      .order('updated_at', { ascending: false })
+      .limit(1);
 
-    if (!newestNote) {
+    if (notesError) {
+      console.error('Error fetching notes:', notesError);
+      return NextResponse.json(
+        { error: 'Failed to fetch notes' },
+        { status: 500 }
+      );
+    }
+
+    if (!notes || notes.length === 0) {
       console.log(`No notes found for user: ${userId}`);
       return NextResponse.json({ newestNoteId: null });
     }
 
-    console.log(`Found newest note with ID: ${newestNote.id}`);
-    return NextResponse.json({ newestNoteId: newestNote.id });
+    console.log(`Found newest note with ID: ${notes[0].id}`);
+    return NextResponse.json({ newestNoteId: notes[0].id });
   } catch (error) {
     console.error('Error fetching newest note:', error);
     return NextResponse.json(

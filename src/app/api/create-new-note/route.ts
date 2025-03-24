@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 // Add CORS headers
 const corsHeaders = {
@@ -26,11 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     // First verify the user exists
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    });
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .single();
 
-    if (!user) {
+    if (userError || !user) {
       console.error(`User not found with ID: ${userId}`);
       return NextResponse.json(
         { error: "User not found" },
@@ -39,19 +41,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new note
-    const note = await prisma.note.create({
-      data: {
-        text: "",
-        authorId: userId,
-      },
-    });
+    const { data: note, error: noteError } = await supabase
+      .from('notes')
+      .insert([
+        {
+          text: '',
+          author_id: userId
+        }
+      ])
+      .select()
+      .single();
+
+    if (noteError) {
+      console.error('Error creating note:', noteError);
+      return NextResponse.json(
+        { error: 'Failed to create note' },
+        { status: 500 }
+      );
+    }
 
     console.log(`Successfully created new note with ID: ${note.id}`);
     return NextResponse.json({ noteId: note.id });
   } catch (error) {
-    console.error("Error creating new note:", error);
+    console.error('Error creating new note:', error);
     return NextResponse.json(
-      { error: "Failed to create note" },
+      { error: 'Failed to create note' },
       { status: 500 }
     );
   }
