@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/db/prisma";
+import { prisma } from "@/lib/prisma";
 
 // Add CORS headers
 const corsHeaders = {
@@ -15,75 +15,47 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Fetch newest note request received");
-    const userId = request.nextUrl.searchParams.get("userId");
-
+    const userId = request.nextUrl.searchParams.get('userId');
+    
     if (!userId) {
-      console.error("Fetch note error: User ID is required");
+      console.error('No userId provided in fetch-newest-note request');
       return NextResponse.json(
-        { error: "User ID is required" },
-        { 
-          status: 400,
-          headers: corsHeaders
-        }
+        { error: 'User ID is required' },
+        { status: 400 }
       );
     }
 
-    console.log("Fetching newest note for user:", userId);
+    // First verify the user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
 
-    // Test database connection first
-    try {
-      await prisma.$connect();
-      console.log("Database connected successfully");
-    } catch (dbError) {
-      console.error("Database connection error:", dbError);
+    if (!user) {
+      console.error(`User not found with ID: ${userId}`);
       return NextResponse.json(
-        { error: "Database connection failed" },
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
+        { error: 'User not found' },
+        { status: 404 }
       );
     }
 
-    // Find the newest note for the user
+    // Get the newest note
     const newestNote = await prisma.note.findFirst({
-      where: {
-        authorId: userId
-      },
-      orderBy: {
-        updatedAt: 'desc'
-      }
+      where: { authorId: userId },
+      orderBy: { updatedAt: 'desc' }
     });
 
     if (!newestNote) {
-      console.log("No notes found for user:", userId);
-      return NextResponse.json(
-        { newestNoteId: null },
-        { headers: corsHeaders }
-      );
+      console.log(`No notes found for user: ${userId}`);
+      return NextResponse.json({ newestNoteId: null });
     }
 
-    console.log("Found newest note:", newestNote.id);
-    return NextResponse.json(
-      { newestNoteId: newestNote.id },
-      { headers: corsHeaders }
-    );
+    console.log(`Found newest note with ID: ${newestNote.id}`);
+    return NextResponse.json({ newestNoteId: newestNote.id });
   } catch (error) {
-    console.error("Error fetching newest note:", error);
+    console.error('Error fetching newest note:', error);
     return NextResponse.json(
-      { error: "Failed to fetch newest note" },
-      { 
-        status: 500,
-        headers: corsHeaders
-      }
+      { error: 'Failed to fetch newest note' },
+      { status: 500 }
     );
-  } finally {
-    try {
-      await prisma.$disconnect();
-      console.log("Database disconnected successfully");
-    } catch (e) {
-      console.error("Error disconnecting from database:", e);
-    }
   }
 } 

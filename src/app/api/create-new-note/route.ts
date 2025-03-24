@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/db/prisma";
+import { prisma } from "@/lib/prisma";
 
 // Add CORS headers
 const corsHeaders = {
@@ -16,59 +16,42 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const userId = request.nextUrl.searchParams.get("userId");
-
+    
     if (!userId) {
-      console.error("Create note error: User ID is required");
+      console.error("No userId provided in create-new-note request");
       return NextResponse.json(
         { error: "User ID is required" },
         { status: 400 }
       );
     }
 
-    // First verify user exists
-    try {
-      // Try to verify/create user first
-      const verifyResponse = await fetch(`${request.nextUrl.origin}/api/verify-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId,
-          email: '', // This will be updated when we get the user from Supabase
-        }),
-      });
+    // First verify the user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
 
-      if (!verifyResponse.ok) {
-        throw new Error('Failed to verify user');
-      }
-
-      const { user } = await verifyResponse.json();
-      if (!user) {
-        throw new Error('User verification failed');
-      }
-
-      // Create a new note for the verified user
-      const note = await prisma.note.create({
-        data: {
-          text: "",
-          authorId: userId,
-        },
-      });
-
-      console.log("Successfully created new note:", note.id);
-      return NextResponse.json({ noteId: note.id }, { status: 201 });
-    } catch (error: any) {
-      console.error("Error creating note:", error);
+    if (!user) {
+      console.error(`User not found with ID: ${userId}`);
       return NextResponse.json(
-        { error: error.message || "Failed to create note" },
-        { status: 500 }
+        { error: "User not found" },
+        { status: 404 }
       );
     }
-  } catch (error: any) {
-    console.error("Error in create-new-note:", error);
+
+    // Create new note
+    const note = await prisma.note.create({
+      data: {
+        text: "",
+        authorId: userId,
+      },
+    });
+
+    console.log(`Successfully created new note with ID: ${note.id}`);
+    return NextResponse.json({ noteId: note.id });
+  } catch (error) {
+    console.error("Error creating new note:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to process request" },
+      { error: "Failed to create note" },
       { status: 500 }
     );
   }
