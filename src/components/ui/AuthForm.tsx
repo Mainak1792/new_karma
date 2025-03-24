@@ -52,7 +52,7 @@ export default function AuthForm({ type }: Props) {
                         email,
                         password,
                         options: {
-                            emailRedirectTo: 'https://new-karma-weld.vercel.app/auth/callback',
+                            emailRedirectTo: `${window.location.origin}/auth/callback`,
                         },
                     });
 
