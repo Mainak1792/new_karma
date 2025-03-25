@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { prisma } from "@/db/prisma";
-import { headers } from "next/headers";
 
 export async function createClient() {
   const cookieStore = cookies();
