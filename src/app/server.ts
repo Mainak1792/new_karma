@@ -11,18 +11,6 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll().map(cookie => ({
-            name: cookie.name,
-            value: cookie.value,
-            ...cookie.options
-          }));
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, ...options }) => {
-            cookieStore.set(name, value, options);
-          });
-        },
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
@@ -33,31 +21,18 @@ export async function createClient() {
           cookieStore.delete(name);
         },
       },
-    }
-  );
-}
-
-export async function getUser() {
-  const headersList = headers();
-  const authHeader = headersList.get('authorization');
-  
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
       auth: {
         flowType: 'pkce',
         autoRefreshToken: true,
         detectSessionInUrl: true,
         persistSession: true
-      },
-      global: {
-        headers: {
-          authorization: authHeader || ''
-        }
       }
     }
   );
+}
+
+export async function getUser() {
+  const supabase = await createClient();
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
