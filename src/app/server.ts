@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { prisma } from "@/db/prisma";
+import { headers } from "next/headers";
 
 export async function createClient() {
   const cookieStore = cookies();
@@ -33,23 +35,32 @@ export async function createClient() {
 }
 
 export async function getUser() {
+  const headersList = headers();
+  const authHeader = headersList.get('authorization');
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true
+      },
+      global: {
+        headers: {
+          authorization: authHeader || ''
+        }
+      }
+    }
+  );
+
   try {
-    const supabase = await createClient();
-    
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Error getting session:', sessionError.message);
-      return null;
-    }
-
-    if (!session) {
-      return null;
-    }
-
-    return session.user;
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
   } catch (error) {
-    console.error('Unexpected error in getUser:', error);
+    console.error('Error getting user:', error);
     return null;
   }
 }
